@@ -1,0 +1,15 @@
+# Compiled executables
+/a.out
+tight
+tight2
+tight2d
+timeevolve
+timeevolve2d
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Local Codex metadata
+.agents/
+.codex/
