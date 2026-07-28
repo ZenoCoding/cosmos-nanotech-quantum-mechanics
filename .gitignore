@@ -1,14 +1,11 @@
-# Compiled executables
-/a.out
-tight
-tight2
-tight2d
-timeevolve
-timeevolve2d
+# Reproducible build output
+/build/
+*.o
 
 # Python caches
 __pycache__/
 *.py[cod]
+.venv/
 
 # Local Codex metadata
 .agents/
