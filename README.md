@@ -34,6 +34,12 @@ oscillators, projectile motion, diffusion, orbital dynamics, matrix
 operations, three-body trajectories, and Lennard–Jones molecular dynamics.
 Lab 12 applies those tools to tight-binding Hamiltonians and quantum transport.
 
+> [!NOTE]
+> The original early-lab directory was cumulative. Its files are now separated
+> into a best-fit Lab 0–11 sequence based on program complexity, dependencies,
+> Git history, and related UC Davis course material. See the
+> [reconstruction notes](labs/README.md) for confidence levels and evidence.
+
 | Area | Examples |
 | --- | --- |
 | Numerical methods | finite differences, matrix multiplication, timed computation |
@@ -108,11 +114,12 @@ Lab 12 applies those tools to tight-binding Hamiltonians and quantum transport.
 ├── Makefile                 # one-command builds and gallery generation
 ├── docs/assets/             # README-ready GIFs and plots
 ├── labs/
-│   ├── 01-11/
-│   │   ├── src/             # 26 runnable C programs
-│   │   ├── data/            # classical and many-body simulation output
-│   │   └── scripts/         # original analysis and animation experiments
-│   └── 12/
+│   ├── 00/ … 11/            # reconstructed, topic-based early labs
+│   │   ├── README.md        # topic, contents, and confidence note
+│   │   ├── src/             # C programs assigned to that lab
+│   │   ├── data/            # associated simulation output, when present
+│   │   └── scripts/         # associated plotting tools, when present
+│   └── 12/                  # original Lab 12 label
 │       ├── src/             # 10 C programs plus LAPACK/BLAS helpers
 │       ├── data/            # spectra, couplings, and quantum evolution
 │       ├── results/         # original static figures
@@ -120,9 +127,8 @@ Lab 12 applies those tools to tight-binding Hamiltonians and quantum transport.
 └── scripts/
     └── generate_gallery.py  # regenerates every visual shown above
 ```
-
-The source collections have their own notes:
-[Labs 1–11](labs/01-11/README.md) · [Lab 12](labs/12/README.md).
+Browse the [reconstructed Lab 0–11 index](labs/README.md) or the
+[Lab 12 notes](labs/12/README.md).
 
 ## Build
 
@@ -134,14 +140,15 @@ sudo apt install build-essential libblas-dev liblapack-dev
 make -j
 ```
 
-Successful builds are written to `build/01-11/` and `build/12/`. The build
-directory is intentionally ignored because every executable is reproducible
-from source.
+Successful builds are written to matching directories from `build/00/`
+through `build/12/`. The build directory is intentionally ignored because
+every executable is reproducible from source.
 
 Useful targets:
 
 ```bash
-make early      # compile the 26 Labs 1–11 programs
+make early      # compile the 26 reconstructed Lab 0–11 programs
+make lab06      # compile one inferred lab by its two-digit number
 make lab12      # compile the 10 Lab 12 programs
 make check      # compile all 36 programs and syntax-check Python
 make clean      # remove generated executables

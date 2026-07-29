@@ -6,16 +6,22 @@ CFLAGS := -std=c11 -O2 -Wall -Wextra
 MATH_LIBS := -lm
 QUANTUM_LIBS := -llapack -lblas -lm
 
-EARLY_SRC := labs/01-11/src
 LAB12_SRC := labs/12/src
-EARLY_BUILD := build/01-11
 LAB12_BUILD := build/12
 
-EARLY_PROGRAMS := \
-	3body add adder2 count decision1 diffusion diffusion2 dotproduct ex \
-	gravity gravity1 hello kepler kepler2 mass_spring matrix matrixtimed \
-	mycount newton1 nonideal_spring projectilemotion quadratic1 random \
-	randomwalk snake solid
+EARLY_LABS := 00 01 02 03 04 05 06 07 08 09 10 11
+LAB00_PROGRAMS := hello snake
+LAB01_PROGRAMS := add count decision1 mycount
+LAB02_PROGRAMS := adder2 ex newton1 quadratic1
+LAB03_PROGRAMS := gravity gravity1
+LAB04_PROGRAMS := mass_spring nonideal_spring
+LAB05_PROGRAMS := projectilemotion
+LAB06_PROGRAMS := kepler kepler2
+LAB07_PROGRAMS := 3body
+LAB08_PROGRAMS := diffusion diffusion2
+LAB09_PROGRAMS := random randomwalk
+LAB10_PROGRAMS := dotproduct matrix matrixtimed
+LAB11_PROGRAMS := solid
 
 LAB12_UTILITY_PROGRAMS := \
 	annealbarrier annealhex evolveannealed evolvebarrier \
@@ -23,7 +29,21 @@ LAB12_UTILITY_PROGRAMS := \
 
 LAB12_MATRIX_PROGRAMS := tight tight2 tight2d
 
-EARLY_TARGETS := $(addprefix $(EARLY_BUILD)/,$(EARLY_PROGRAMS))
+EARLY_TARGETS :=
+
+define EARLY_LAB_RULES
+LAB$(1)_TARGETS := $$(addprefix build/$(1)/,$$(LAB$(1)_PROGRAMS))
+EARLY_TARGETS += $$(LAB$(1)_TARGETS)
+
+$$(LAB$(1)_TARGETS): build/$(1)/%: labs/$(1)/src/%.c | build/$(1)
+	$$(CC) $$(CPPFLAGS) $$(CFLAGS) $$< $$(MATH_LIBS) -o $$@
+
+.PHONY: lab$(1)
+lab$(1): $$(LAB$(1)_TARGETS)
+endef
+
+$(foreach lab,$(EARLY_LABS),$(eval $(call EARLY_LAB_RULES,$(lab))))
+
 LAB12_UTILITY_TARGETS := $(addprefix $(LAB12_BUILD)/,$(LAB12_UTILITY_PROGRAMS))
 LAB12_MATRIX_TARGETS := $(addprefix $(LAB12_BUILD)/,$(LAB12_MATRIX_PROGRAMS))
 ALL_TARGETS := $(EARLY_TARGETS) $(LAB12_UTILITY_TARGETS) $(LAB12_MATRIX_TARGETS)
@@ -35,9 +55,6 @@ all: $(ALL_TARGETS)
 early: $(EARLY_TARGETS)
 
 lab12: $(LAB12_UTILITY_TARGETS) $(LAB12_MATRIX_TARGETS)
-
-$(EARLY_TARGETS): $(EARLY_BUILD)/%: $(EARLY_SRC)/%.c | $(EARLY_BUILD)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(MATH_LIBS) -o $@
 
 $(LAB12_UTILITY_TARGETS): $(LAB12_BUILD)/%: \
 		$(LAB12_SRC)/%.c $(LAB12_SRC)/utilities.c $(LAB12_SRC)/utilities.h \
@@ -51,7 +68,7 @@ $(LAB12_MATRIX_TARGETS): $(LAB12_BUILD)/%: \
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LAB12_SRC)/matrix.c \
 		$(LAB12_SRC)/utilities.c $(QUANTUM_LIBS) -o $@
 
-$(EARLY_BUILD) $(LAB12_BUILD):
+build/%:
 	mkdir -p $@
 
 visuals:

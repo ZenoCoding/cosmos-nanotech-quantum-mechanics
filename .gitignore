@@ -1,5 +1,6 @@
 # Reproducible build output
 /build/
+/a.out
 *.o
 
 # Python caches
