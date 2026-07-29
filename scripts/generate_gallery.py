@@ -319,13 +319,31 @@ def molecular_dynamics() -> None:
     lower = positions.min(axis=(0, 1))
     upper = positions.max(axis=(0, 1))
 
+    step_deltas = np.diff(steps)
+    step_deltas[step_deltas == 0] = 1
+    velocities = np.empty_like(positions)
+    velocities[1:] = np.diff(positions, axis=0) / step_deltas[:, None, None]
+    velocities[0] = velocities[1]
+    speeds = np.linalg.norm(velocities, axis=2)
+    smoothed_speeds = np.empty_like(speeds)
+    smoothed_speeds[0] = speeds[0]
+    for frame in range(1, len(steps)):
+        smoothed_speeds[frame] = (
+            0.15 * speeds[frame] + 0.85 * smoothed_speeds[frame - 1]
+        )
+
     figure, axis = plt.subplots(figsize=(5.2, 4.8))
+    bonds = LineCollection(
+        [], colors="#60a5fa", linewidths=0.55, alpha=0.28, zorder=1
+    )
+    axis.add_collection(bonds)
     points = axis.scatter(
         positions[0, :, 0],
         positions[0, :, 1],
         s=16,
         color="#7c3aed",
         alpha=0.8,
+        zorder=2,
     )
     axis.set(
         xlim=(lower[0] - 0.25, upper[0] + 0.25),
@@ -337,10 +355,38 @@ def molecular_dynamics() -> None:
     axis.set_aspect("equal")
     step_text = axis.text(0.03, 0.94, "", transform=axis.transAxes)
 
+    def lattice_bonds(frame: int) -> tuple[list[list[np.ndarray]], int]:
+        cool_indices = np.flatnonzero(smoothed_speeds[frame] < 2.0e-4)
+        if len(cool_indices) < 2:
+            return [], len(cool_indices)
+
+        cool_positions = positions[frame, cool_indices]
+        offsets = cool_positions[:, None, :] - cool_positions[None, :, :]
+        distances = np.linalg.norm(offsets, axis=2)
+        np.fill_diagonal(distances, np.inf)
+        neighbor_count = min(6, len(cool_indices) - 1)
+        nearest = np.argpartition(
+            distances, neighbor_count - 1, axis=1
+        )[:, :neighbor_count]
+        pairs = {
+            tuple(sorted((index, int(neighbor))))
+            for index, neighbors in enumerate(nearest)
+            for neighbor in neighbors
+            if distances[index, neighbor] <= 0.27
+        }
+        return [
+            [cool_positions[first], cool_positions[second]]
+            for first, second in pairs
+        ], len(cool_indices)
+
     def update(frame: int):
         points.set_offsets(positions[frame])
-        step_text.set_text(f"step {int(steps[frame])}")
-        return points, step_text
+        segments, cool_count = lattice_bonds(frame)
+        bonds.set_segments(segments)
+        step_text.set_text(
+            f"step {int(steps[frame])} · cool atoms {cool_count}/{len(positions[frame])}"
+        )
+        return bonds, points, step_text
 
     figure.tight_layout()
     save_animation(figure, update, indices, "molecular-dynamics.gif")
