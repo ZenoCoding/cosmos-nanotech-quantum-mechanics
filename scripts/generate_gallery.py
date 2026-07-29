@@ -17,7 +17,7 @@ import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EARLY_DATA = ROOT / "labs" / "01-11" / "data"
+LABS = ROOT / "labs"
 QUANTUM_DATA = ROOT / "labs" / "12" / "data"
 ASSETS = ROOT / "docs" / "assets"
 MAX_FRAMES = 60
@@ -168,8 +168,8 @@ def honeycomb_lattice(data_file: Path, title_text: str, filename: str) -> None:
 
 
 def kepler_comparison() -> None:
-    first = np.loadtxt(EARLY_DATA / "kepler1")
-    second = np.loadtxt(EARLY_DATA / "kepler2")
+    first = np.loadtxt(LABS / "06" / "data" / "kepler1")
+    second = np.loadtxt(LABS / "06" / "data" / "kepler2")
     count = min(len(first), len(second))
     indices = frame_indices(count)
 
@@ -183,8 +183,12 @@ def kepler_comparison() -> None:
     )
     axis.set_aspect("equal")
     axis.scatter([0], [0], color="#f59e0b", s=110, label="Sun")
-    (path_one,) = axis.plot([], [], color="#2563eb", label="Integrator 1")
-    (path_two,) = axis.plot([], [], color="#dc2626", label="Integrator 2")
+    (path_one,) = axis.plot(
+        [], [], color="#2563eb", label="Symplectic Euler (drift–kick)"
+    )
+    (path_two,) = axis.plot(
+        [], [], color="#dc2626", label="Forward Euler"
+    )
     planet_one = axis.scatter([], [], color="#2563eb", s=35)
     planet_two = axis.scatter([], [], color="#dc2626", s=35)
     axis.legend(loc="upper right")
@@ -228,7 +232,7 @@ def kepler_comparison() -> None:
 
 
 def three_body() -> None:
-    data = np.loadtxt(EARLY_DATA / "3body")
+    data = np.loadtxt(LABS / "07" / "data" / "3body")
     indices = frame_indices(len(data), 72)
     positions = [data[:, 1:3], data[:, 3:5], data[:, 5:7]]
     colors = ["#f59e0b", "#2563eb", "#dc2626"]
@@ -261,16 +265,28 @@ def three_body() -> None:
 
 
 def diffusion_comparison() -> None:
-    explicit = np.loadtxt(EARLY_DATA / "diffusion.txt", ndmin=2)
-    alternate = np.loadtxt(EARLY_DATA / "diffusion2.txt", ndmin=2)
+    explicit = np.loadtxt(LABS / "08" / "data" / "diffusion.txt", ndmin=2)
+    alternate = np.loadtxt(
+        LABS / "08" / "data" / "diffusion2.txt", ndmin=2
+    )
     count = min(len(explicit), len(alternate))
     indices = frame_indices(count)
     x = np.linspace(0, 1, explicit.shape[1])
     maximum = max(float(explicit.max()), float(alternate.max()))
 
     figure, axis = plt.subplots(figsize=(6.4, 3.8))
-    (line_one,) = axis.plot(x, explicit[0], color="#2563eb", label="Scheme 1")
-    (line_two,) = axis.plot(x, alternate[0], color="#dc2626", label="Scheme 2")
+    (line_one,) = axis.plot(
+        x,
+        explicit[0],
+        color="#2563eb",
+        label="FTCS · fixed-value boundaries",
+    )
+    (line_two,) = axis.plot(
+        x,
+        alternate[0],
+        color="#dc2626",
+        label="FTCS · zero-flux boundaries",
+    )
     axis.set(
         xlim=(0, 1),
         ylim=(0, maximum * 1.05),
@@ -292,7 +308,11 @@ def diffusion_comparison() -> None:
 
 
 def molecular_dynamics() -> None:
-    data = np.loadtxt(EARLY_DATA / "positions.csv", delimiter=",", skiprows=1)
+    data = np.loadtxt(
+        LABS / "11" / "data" / "positions.csv",
+        delimiter=",",
+        skiprows=1,
+    )
     steps = data[:, 0]
     positions = data[:, 1:].reshape(len(data), -1, 2)
     indices = frame_indices(len(data), 72)
@@ -327,7 +347,7 @@ def molecular_dynamics() -> None:
 
 
 def projectile_motion() -> None:
-    data = np.loadtxt(EARLY_DATA / "projmotion")
+    data = np.loadtxt(LABS / "05" / "data" / "projmotion")
     indices = frame_indices(len(data))
     x, y = data[:, 1], data[:, 2]
 
@@ -354,7 +374,7 @@ def projectile_motion() -> None:
 
 
 def mass_spring() -> None:
-    data = np.loadtxt(EARLY_DATA / "mass_spring")
+    data = np.loadtxt(LABS / "04" / "data" / "mass_spring")
     indices = frame_indices(len(data))
     time, position = data[:, 0], data[:, 1]
 
