@@ -4,7 +4,9 @@
 
 This is the most complex pre-quantum simulation: 200 particles interact in two
 dimensions through a Lennard–Jones force, with trajectories saved to CSV and
-animated in Python.
+animated in Python. The animation estimates particle speeds from successive
+saved positions and draws nearby bonds between low-speed atoms to make emerging
+lattice structure easier to see.
 
 - `src/solid.c`
 - `data/positions.csv`
