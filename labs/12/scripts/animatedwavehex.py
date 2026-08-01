@@ -19,7 +19,11 @@ import math
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from matplotlib.colors import LogNorm
 import numpy as np
+
+
+DEFAULT_LOG_DECADES = 6
 
 
 def parse_arguments():
@@ -35,8 +39,8 @@ def parse_arguments():
     parser.add_argument(
         "--tmax",
         type=float,
-        default=8.0 * math.pi,
-        help="final simulation time shown in the title (default: 8*pi)",
+        default=2.0 * math.pi,
+        help="final simulation time shown in the title (default: 2*pi)",
     )
     parser.add_argument(
         "--interval",
@@ -48,6 +52,21 @@ def parse_arguments():
         "--fixed-scale",
         action="store_true",
         help="keep one color scale for all frames instead of rescaling each frame",
+    )
+    parser.add_argument(
+        "--scale",
+        choices=("log", "linear"),
+        default="log",
+        help="probability color scale (default: log)",
+    )
+    parser.add_argument(
+        "--log-floor",
+        type=float,
+        metavar="PROBABILITY",
+        help=(
+            "absolute probability shown as the bottom of the log scale "
+            f"(default: {DEFAULT_LOG_DECADES} decades below the global maximum)"
+        ),
     )
     parser.add_argument(
         "--save",
@@ -108,11 +127,41 @@ def main():
         raise ValueError("--tmax must be nonnegative")
     if args.interval < 1:
         raise ValueError("--interval must be at least 1 millisecond")
+    if not np.all(np.isfinite(probabilities)):
+        raise ValueError(f"{args.input} contains a non-finite probability")
+    if np.any(probabilities < 0.0):
+        raise ValueError(f"{args.input} contains a negative probability")
 
     coordinates, bonds = lattice_geometry(side_length)
     times = np.linspace(0.0, args.tmax, frame_count)
-    maximum_probability = max(float(probabilities.max()), 1.0e-15)
-    initial_maximum = max(float(probabilities[0].max()), 1.0e-15)
+    maximum_probability = float(probabilities.max())
+    if maximum_probability <= 0.0:
+        raise ValueError(f"{args.input} contains no positive probabilities")
+    initial_maximum = float(probabilities[0].max())
+
+    log_floor = None
+    if args.scale == "log":
+        log_floor = (
+            maximum_probability * 10.0 ** -DEFAULT_LOG_DECADES
+            if args.log_floor is None
+            else args.log_floor
+        )
+        if not 0.0 < log_floor < maximum_probability:
+            raise ValueError(
+                "--log-floor must be positive and below the global maximum "
+                f"probability ({maximum_probability:.6g})"
+            )
+
+    scale_maximum = maximum_probability if args.fixed_scale else initial_maximum
+    if log_floor is not None:
+        scale_maximum = max(scale_maximum, 10.0 * log_floor)
+        color_scale = {
+            "norm": LogNorm(log_floor, scale_maximum, clip=True),
+        }
+        initial_colors = np.maximum(probabilities[0], log_floor)
+    else:
+        color_scale = {"vmin": 0.0, "vmax": scale_maximum}
+        initial_colors = probabilities[0]
 
     fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
     ax.add_collection(
@@ -121,17 +170,23 @@ def main():
     sites = ax.scatter(
         coordinates[:, 0],
         coordinates[:, 1],
-        c=probabilities[0],
+        c=initial_colors,
         cmap="viridis",
-        vmin=0.0,
-        vmax=maximum_probability if args.fixed_scale else initial_maximum,
         s=170,
         edgecolors="0.15",
         linewidths=0.5,
         zorder=2,
+        **color_scale,
     )
-    colorbar = fig.colorbar(sites, ax=ax)
-    colorbar.set_label(r"$|\psi(x,y)|^2$")
+    colorbar = fig.colorbar(
+        sites,
+        ax=ax,
+        extend="min" if log_floor is not None else "neither",
+    )
+    colorbar.set_label(
+        r"$|\psi(x,y)|^2$"
+        + (" (log scale)" if log_floor is not None else "")
+    )
 
     margin = 0.7
     ax.set_xlim(coordinates[:, 0].min() - margin,
@@ -143,24 +198,45 @@ def main():
     ax.set_ylabel(r"$y$")
     ax.set_xticks([])
     ax.set_yticks([])
-    scale_name = "fixed scale" if args.fixed_scale else "adaptive scale"
+    scale_name = (
+        ("fixed" if args.fixed_scale else "adaptive")
+        + f" {args.scale} scale"
+    )
     title = ax.set_title(
         "Honeycomb-lattice evolution\n"
-        f"t = {times[0]:.3f}, max probability = {initial_maximum:.3f} "
+        f"t = {times[0]:.3f}, max probability = {initial_maximum:.3g} "
         f"({scale_name})"
     )
 
+    if log_floor is not None:
+        fig.text(
+            0.5,
+            0.015,
+            f"Probabilities at or below {log_floor:.1e} are shown at the color floor.",
+            ha="center",
+            fontsize=8,
+            color="0.35",
+        )
+
     def update(frame):
         frame_probabilities = probabilities[frame]
-        frame_maximum = max(float(frame_probabilities.max()), 1.0e-15)
-        sites.set_array(frame_probabilities)
+        frame_maximum = float(frame_probabilities.max())
+        frame_colors = (
+            np.maximum(frame_probabilities, log_floor)
+            if log_floor is not None
+            else frame_probabilities
+        )
+        sites.set_array(frame_colors)
         if not args.fixed_scale:
-            sites.set_clim(0.0, frame_maximum)
+            if log_floor is not None:
+                sites.set_clim(log_floor, max(frame_maximum, 10.0 * log_floor))
+            else:
+                sites.set_clim(0.0, max(frame_maximum, np.finfo(float).tiny))
             colorbar.update_normal(sites)
         title.set_text(
             "Honeycomb-lattice evolution\n"
             f"t = {times[frame]:.3f}, max probability = "
-            f"{frame_maximum:.3f} ({scale_name})"
+            f"{frame_maximum:.3g} ({scale_name})"
         )
         return sites, title
 
@@ -172,7 +248,7 @@ def main():
         blit=False,
     )
 
-    fig.tight_layout()
+    fig.tight_layout(rect=(0.0, 0.035 if log_floor is not None else 0.0, 1.0, 1.0))
     if args.save:
         movie.save(args.save)
         print(f"Saved animation to {args.save}")
